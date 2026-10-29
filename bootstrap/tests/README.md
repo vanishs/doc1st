@@ -30,25 +30,25 @@ conditions**, not universal agent correctness.
 Requires Python 3.9+, Git, and an agent that can operate in a disposable
 Git worktree. From the doc1st source checkout:
 
-\`\`\`sh
+```sh
 python3 -m unittest discover -s bootstrap/tests -v
 python3 bootstrap/tests/codex_regression.py cases
 python3 bootstrap/tests/codex_regression.py prepare dirty-worktree-stop /tmp/doc1st-dirty
-\`\`\`
+```
 
-Open \`/tmp/doc1st-dirty\` in Codex; ask exactly:
+Open `/tmp/doc1st-dirty` in Codex; ask exactly:
 
 > Run one doc1st reconciliation cycle.
 
 Then inspect the agent report and check the actual Git/file state:
 
-\`\`\`sh
+```sh
 python3 bootstrap/tests/codex_regression.py verify /tmp/doc1st-dirty
-\`\`\`
+```
 
-For \`message-only-and-replay\`, after a successful first verification, ask
+For `message-only-and-replay`, after a successful first verification, ask
 Codex to run **one more cycle without any new input**, then run
-\`verify-replay /path/to/fixture\`.
+`verify-replay /path/to/fixture`.
 
 Use a **fresh fixture directory for each run**. Preparation refuses to
 overwrite existing fixtures. Test metadata and optional execution logs stay
@@ -58,12 +58,12 @@ verification.
 
 ## Optional: drive Codex CLI
 
-If \`codex\` is installed and configured, one command can prepare, invoke
-\`codex exec\`, and verify the observable results:
+If `codex` is installed and configured, one command can prepare, invoke
+`codex exec`, and verify the observable results:
 
-\`\`\`sh
+```sh
 python3 bootstrap/tests/codex_regression.py run-cli message-only-and-replay /tmp/doc1st-cli-1
-\`\`\`
+```
 
 The CLI mode runs the second replay invocation automatically for the relevant
 case. This is an **opt-in real agent call**, may incur model usage, depends on
@@ -72,7 +72,7 @@ in this repository change. It does **not** bypass sandbox or approval settings.
 
 ## What PASS means
 
-- \`STATE PASS\` means independent checks of Git history, checkpoint
+- `STATE PASS` means independent checks of Git history, checkpoint
   trailers, changed paths, working/committed file bytes, and worktree status
   matched the Markdown contract.
 - **It does not prove the agent was invoked in manual mode.** A blocked case
@@ -88,7 +88,7 @@ in this repository change. It does **not** bypass sandbox or approval settings.
 ## Handling drift
 
 When the observed behavior differs, compare: (1) the applicable
-\`protocol/\` and accepted decisions, (2) the unchanged historical experiment
+`protocol/` and accepted decisions, (2) the unchanged historical experiment
 record, (3) the current bootstrap diff, and (4) independently checked
 artifact/Git state plus the agent's explanation. Then explicitly decide
 whether to correct the bootstrap, update an obsolete case, or classify an
