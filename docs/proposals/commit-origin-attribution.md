@@ -21,3 +21,8 @@ An ordinary Codex App chat may produce commits using the user's Git identity. A 
 - One worktree receives both manual and automatic commits.
 
 Success means not looping on agent outputs, not silently granting human authority to arbitrary generated files, and retaining compatibility with ordinary Git.
+
+See the [`git-origin-metadata` trial](../../experiments/git-origin-metadata/README.md)
+for a narrow local observation about commit identity fields and origin
+trailers. It does not resolve the authorization policy or establish provenance
+for third-party tools.
