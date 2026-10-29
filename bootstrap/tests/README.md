@@ -1,70 +1,99 @@
-# Codex bootstrap behavioral regression: message-only cycle
+# Bootstrap behavioral regression specifications
 
-**Case:** `codex-message-only-v1`  
-**Status:** Executable fixture and state assertions; requires a **manual Codex invocation**.  
-**Scope:** Codex bootstrap only. This is not a standalone client test.
+**Scope:** Codex bootstrap adapter, manually invoked Git coordination.
+**Purpose:** Notice behavioral drift after a bootstrap upgrade without
+silently redefining what the project considers correct.
 
-## Why this exists
+The Markdown files in [specs/](specs/) are the **source of expected behavior**.
+Each names its historical experiment, applicable active protocol, setup,
+stimulus, observable expectation, and separate human-review question.
+The fenced JSON block in each Markdown file is the runner-readable contract;
+there is no independently maintained golden-output file.
 
-When `bootstrap/codex/` changes, rerun the same behavioral case against the
-updated templates. Differences are **review signals**, not permission to
-automatically rewrite test expectations or declare the bootstrap broken.
-The normative contract lives in `../../protocol/`; the checks here are a
-small, stable set of externally observable expectations.
+## Initial cases
 
-## Run
+| Case | Evidence | What it protects |
+| --- | --- | --- |
+| [Message-only and replay](specs/message-only-and-replay.md) | Minimal Codex trial | Empty human-intent commit is handled once, then not replayed |
+| [Dirty worktree](specs/dirty-worktree-stop.md) | Boundary trials | Uncommitted user changes are preserved |
+| [Third-party input](specs/unapproved-third-party-stop.md) | Boundary trials | Explicitly unapproved third-party request is not adopted |
+| [Marker deletion](specs/marker-deletion-no-approval.md) | Boundary trials | Deleting attention is not approving a product decision |
 
-Requirements: Python 3.9+, Git, and Codex App/CLI with repository access.
-Run commands from the doc1st source checkout:
+Existing reports under [experiments/](../../experiments/) remain **historical
+evidence**; they are never rewritten to match future behavior. These proposed
+expectations have current-protocol support but remain reviewable, not automatic
+new normative requirements. The tests reproduce the **narrow synthetic
+conditions**, not universal agent correctness.
 
-```sh
-python3 bootstrap/tests/codex_regression.py prepare /tmp/doc1st-codex-case
-```
+## Run with Codex App or another manual invocation
 
-The command creates a **new**, isolated Git repository using the current
-`bootstrap/codex/` templates. It records the synthetic input SHA in a JSON
-file **beside** (not inside) the fixture repository. It refuses to overwrite
-an existing fixture.
+Requires Python 3.9+, Git, and an agent that can operate in a disposable
+Git worktree. From the doc1st source checkout:
 
-1. Open `/tmp/doc1st-codex-case` in Codex. Ask exactly: **Run one doc1st reconciliation cycle.** Allow only the actions needed for this disposable repository.
-2. Back in the doc1st checkout, run:
-   ```sh
-   python3 bootstrap/tests/codex_regression.py verify /tmp/doc1st-codex-case
-   ```
-3. In the same Codex workspace, ask again: **Run one doc1st reconciliation cycle.** There must be **no new eligible input**.
-4. Run:
-   ```sh
-   python3 bootstrap/tests/codex_regression.py verify-replay /tmp/doc1st-codex-case
-   ```
+\`\`\`sh
+python3 -m unittest discover -s bootstrap/tests -v
+python3 bootstrap/tests/codex_regression.py cases
+python3 bootstrap/tests/codex_regression.py prepare dirty-worktree-stop /tmp/doc1st-dirty
+\`\`\`
 
-To retest a changed bootstrap, use a **fresh fixture path**. Never adjust the
-expected outcome to match a failing agent run without human review.
+Open \`/tmp/doc1st-dirty\` in Codex; ask exactly:
 
-## Fixed expected behavior
+> Run one doc1st reconciliation cycle.
 
-The first synthetic input is an **empty human-intent commit** requesting
-`status.txt` change from `Status: pending\\n` to `Status: ready\\n`.
+Then inspect the agent report and check the actual Git/file state:
 
-- Exactly one child agent checkpoint commit after that input, carrying
-  `Doc1st-Origin: agent` and
-  `Doc1st-Processed-Through: <exact input SHA>`.
-- Only `status.txt` changes; its **committed and working bytes** equal the
-  requested value; the fixture worktree is clean.
-- On a second cycle with no new input, HEAD, the file and clean worktree
-  remain unchanged. No empty replay checkpoint is allowed.
+\`\`\`sh
+python3 bootstrap/tests/codex_regression.py verify /tmp/doc1st-dirty
+\`\`\`
 
-A successful Codex CLI process exit, a plausible agent reply, or a reported
-test pass is **not** a substitute for these independent checks.
+For \`message-only-and-replay\`, after a successful first verification, ask
+Codex to run **one more cycle without any new input**, then run
+\`verify-replay /path/to/fixture\`.
 
-## Interpreting differences
+Use a **fresh fixture directory for each run**. Preparation refuses to
+overwrite existing fixtures. Test metadata and optional execution logs stay
+alongside the fixture, outside its Git worktree. A SHA-256 of the source
+Markdown prevents silently changing a case between preparation and
+verification.
 
-On a failure, compare the bootstrap/protocol diff, the agent's actual file
-and commit state, its explanation, and this case's assumptions. Decide whether
-the bootstrap violated the intended contract, the test encoded an outdated
-expectation, or the agent/environment produced a transient failure. Record
-the decision in the reviewed change; **do not auto-approve new behavior**.
+## Optional: drive Codex CLI
 
-This one case does not test provenance ambiguity, dirty worktrees, marker
-deletion, multi-agent use, or automatic invocation. Those need separate cases.
-The script deliberately **does not launch Codex**, so this is not a fully
-automated or deterministic end-to-end model test.
+If \`codex\` is installed and configured, one command can prepare, invoke
+\`codex exec\`, and verify the observable results:
+
+\`\`\`sh
+python3 bootstrap/tests/codex_regression.py run-cli message-only-and-replay /tmp/doc1st-cli-1
+\`\`\`
+
+The CLI mode runs the second replay invocation automatically for the relevant
+case. This is an **opt-in real agent call**, may incur model usage, depends on
+local tool permissions, and has not been validated against a real Codex CLI
+in this repository change. It does **not** bypass sandbox or approval settings.
+
+## What PASS means
+
+- \`STATE PASS\` means independent checks of Git history, checkpoint
+  trailers, changed paths, working/committed file bytes, and worktree status
+  matched the Markdown contract.
+- **It does not prove the agent was invoked in manual mode.** A blocked case
+  can exhibit the expected unchanged Git state even if no agent ran.
+- It does not prove *why* the agent stopped, or that it never temporarily
+  made and reverted changes. Review the actual invocation log/agent report
+  using the case's **Human review** section.
+- A CLI exit code of 0 is not a pass. A missing checkpoint, wrong result, or
+  unintended changes should be investigated, not automatically accepted.
+- The Python unit tests of the **runner** simulate Git outcomes and are
+  not results of running the real Agent.
+
+## Handling drift
+
+When the observed behavior differs, compare: (1) the applicable
+\`protocol/\` and accepted decisions, (2) the unchanged historical experiment
+record, (3) the current bootstrap diff, and (4) independently checked
+artifact/Git state plus the agent's explanation. Then explicitly decide
+whether to correct the bootstrap, update an obsolete case, or classify an
+environment/agent failure and rerun. **Never auto-rebaseline on failure.**
+
+More cases (other agents, hidden provenance, concurrency, worktree variants,
+protocol self-modification, etc.) require their own scoped specifications
+and evidence rather than extrapolating guarantees from these four.
